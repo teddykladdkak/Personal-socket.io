@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Personal-översikt Liten</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+	<meta content="yes" name="apple-mobile-web-app-capable" />
+	<meta content="yes" name="mobile-web-app-capable" />
+	<meta content="minimum-scale=1.0, width=device-width, maximum-scale=0.6667, user-scalable=no" name="viewport" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+	<script src="config.js" type="text/javascript"></script>
+	<script src="personal.js" type="text/javascript"></script>
+	<script src="script.js" type="text/javascript"></script>
+	<script type="text/javascript">
+		var checktime;
+		var currentpass = '';
+		function load(message){
+			// Tar bort och skapar ny header med aktuellt datum m.m.
+			var datewrapper = document.getElementById('date');
+			while (datewrapper.hasChildNodes()) {datewrapper.removeChild(datewrapper.firstChild);};
+				datewrapper.setAttribute('data-date', message.datum);
+				datewrapper.setAttribute('data-pass', message.pass);
+				var datehead = document.createElement('h2');
+					var dateheadtext = document.createTextNode(config.pass[message.pass].rubrik + ' ' + message.datum);
+					datehead.appendChild(dateheadtext);
+				datewrapper.appendChild(datehead);
+			var currentpass = message.pass;
+			clearInterval(checktime);
+			checktime = setInterval(function(){
+				if(currentpass == ''){}else{
+					var nyttpass = passtyp();
+					if(currentpass == nyttpass){
+						console.log('Inget nytt pass!: ' + currentpass + ' = ' + nyttpass);
+					}else{
+						console.log('Nytt pass!: ' + currentpass + ' = ' + nyttpass);
+						var param = {datum: datum(), tid: nyttpass, return: 'harfardudata'};
+						socket.emit('getdatafromdate', param);
+					};
+				};
+			}, 1000 * 60);
+
+			// Hämta veckonummer, namnsdag, veckodag
+			var head = document.getElementsByTagName('head')[0];
+				var script = document.createElement('script');
+					script.setAttribute('type', 'text/javascript');
+					script.setAttribute('src', 'http://api.dryg.net/dagar/v2.1/' + message.datum.replace('-', '/').replace('-', '/') + '?callback=addnamnsdag');
+				head.appendChild(script);
+
+			// Lägger till namn och rubriker m.m. på sidan
+			var wrapper = document.getElementById('wrapper');
+			while (wrapper.hasChildNodes()) {wrapper.removeChild(wrapper.firstChild);};
+			for (var i = 0; i < config.pass[message.pass].elements.length; i++){
+				var info = message.personal[config.pass[message.pass].elements[i].id]
+				if(info.length == 0){}else{
+					var head = document.createElement('h1');
+						var headtext = document.createTextNode(config.pass[message.pass].elements[i].rubrik);
+						head.appendChild(headtext);
+					wrapper.appendChild(head);
+					for (var a = 0; a < info.length; a++){
+						var paragraf = document.createElement('h2');
+							for (var b = config.titlar.length - 1; b >= 0; b--) {
+								if(config.titlar[b].code == info[a].titel){
+									var prittytitel = config.titlar[b].show;
+								};
+							};
+							var paragraftext = document.createTextNode(watchtext(' ', prittytitel, ' ') + watchtext(' ', info[a].namn) + watchtext(' telefon: ', info[a].telefon, ''));
+							paragraf.appendChild(paragraftext);
+						wrapper.appendChild(paragraf);
+					};
+				};
+			};
+			if(message.dagensaktivitet == ''){}else{
+				var dagenshead = document.createElement('h1');
+						var dagensheadtext = document.createTextNode(config.fritext);
+					dagenshead.appendChild(dagensheadtext);
+				wrapper.appendChild(dagenshead);
+				var dagenstext = document.createElement('h2');
+						var dagenstexttext = document.createTextNode(message.dagensaktivitet);
+					dagenstext.appendChild(dagenstexttext);
+				wrapper.appendChild(dagenstext);
+			};
+			if(message.dagensaktivitet == ''){}else{
+				var dagenstext = document.createElement('h2');
+						var dagenstexttext = document.createTextNode(config.planerad + ': ' + message.antalopimorgon + ' st.');
+					dagenstext.appendChild(dagenstexttext);
+				wrapper.appendChild(dagenstext);
+			};
+		};
+	</script>
+	<style type="text/css">
+		*{
+			margin: 0px;
+			padding: 0px;
+		}
+		h1{
+			text-decoration: underline;
+			margin: 5px 0px;
+		}
+		#date{
+			text-align: center;
+			background-color: black;
+			color: white;
+		}
+		.demo{
+			margin-top: 50px;
+			zoom: 2;
+		}
+	</style>
+</head>
+<body>
+	<div id="date"></div>
+	<div id="wrapper"></div>
+	<input type="button" onclick="demo()" value="Ändra tid" class="demo">
+	<script src="/socket.io/socket.io.js"></script>
+	<script type="text/javascript">
+		//Tar server id enbart för att koppla till socket
+		var geturl = window.location.href.replace('http://', '').split('/')[0];
+		
+		//Lyssnar om server säger något
+		var socket = io.connect(geturl);
+
+		// Visar i console log status från server
+		socket.on('message', function(message) {
+			console.log(message);
+		});
+
+		// Om server skickar ifall användaren vill ha data
+		socket.on('villduhadata', function(message) {
+			var param = {datum: datum(), tid: passtyp(), return: 'harfardudata'};
+			socket.emit('getdatafromdate', param);
+		});
+
+		// När server skickar data
+		socket.on('harfardudata', function(message) {
+			console.log(message);
+			load(message);
+		});
+
+		// Vid förändring på server frågar den ifall datum är aktuellt att uppdatera
+		socket.on('ardatumaktuell', function(message) {
+			var header = document.getElementById('date');
+			var headdatum = header.getAttribute('data-date');
+			var headpass = header.getAttribute('data-pass');
+			if(message == headdatum){
+				var param = {datum: headdatum, tid: headpass, return: 'harfardudata'};
+				socket.emit('getdatafromdate', param);
+			};
+		});
+	</script>
+</body>
+</html>

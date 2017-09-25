@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Chema injektion</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+	<meta content="yes" name="apple-mobile-web-app-capable" />
+	<meta content="yes" name="mobile-web-app-capable" />
+	<meta content="minimum-scale=1.0, width=device-width, maximum-scale=0.6667, user-scalable=no" name="viewport" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+	<script type="text/javascript">
+		var pasteschema = '';
+		var useddates = [];
+		function analyse(){
+			var textarea = document.getElementById('pastetext').value;
+			var nydatearray = {};
+			var linesplit = textarea.split('\n');
+			for (var i = linesplit.length - 1; i >= 0; i--) {
+				var allsplit = linesplit[i].split('	');
+				if(allsplit[0] == 'SSK' || allsplit[0] == 'USK' || allsplit[0] == 'Bemanningen' || allsplit[0] == 'Avd värd'){
+					if(allsplit[1] == 'Otäckta pass'){}else{
+						for (var c = allsplit.length - 1; c >= 0; c--) {
+							if(allsplit[c] == '' || allsplit[c] == ' ' || allsplit[c] == '	' || c == 0 || c == 1){}else{
+								var datum = getdates(textarea, c);
+								if(datum == ''){}else{
+									if(!nydatearray['"' + datum + '"']){
+										nydatearray['"' + datum + '"'] = [];
+										useddates.push(datum);
+									}
+									nydatearray['"' + datum + '"'].push({namn: allsplit[1], titel: allsplit[0], passtyp: allsplit[c]});
+								};
+							};
+						};
+					};
+				};
+			};
+			console.log(useddates);
+			console.log(nydatearray);
+			socket.emit('skickaosorterade', {datumarray: useddates, data: nydatearray});
+			window['pasteschema'] = nydatearray;
+			demo(textarea);
+		};
+		function demo(textarea){
+			var data = window['pasteschema'];
+			var wrapper = document.getElementById('resultat');
+			useddates.sort().reverse();
+			for (var i = useddates.length - 1; i >= 0; i--) {
+				var paragraf = document.createElement('p');
+					var paragraftext = document.createTextNode(useddates[i] + ': [');
+					paragraf.appendChild(paragraftext);
+				wrapper.appendChild(paragraf);
+				var infofromdata = data['"' + useddates[i] + '"'];
+				for (var a = infofromdata.length - 1; a >= 0; a--) {
+					if(a == 0){
+						var end = '';
+					}else{
+						var end = ',';
+					};
+					var workerparagraf = document.createElement('p');
+						workerparagraf.setAttribute('style', 'padding-left: 10px;')
+						var workertext = document.createTextNode('	{namn: "' + infofromdata[a].namn + '", titel: "' + infofromdata[a].titel + '", passtyp: "' + infofromdata[a].passtyp + '"}' + end);
+						workerparagraf.appendChild(workertext);
+					wrapper.appendChild(workerparagraf);
+					if(a == 0){
+						var endelement = document.createElement('p');
+							var endtext = document.createTextNode('],');
+							endelement.appendChild(endtext);
+						wrapper.appendChild(endelement);
+					};
+				};
+			};
+		};
+		function getdates(textarea, number, hela){
+			var linesplit = textarea.split('\n');
+			for (var i = linesplit.length - 1; i >= 0; i--) {
+				var allsplit = linesplit[i].split('	');
+				if(allsplit[1] == 'Datum'){
+					for (var a = 0; a < allsplit.length; a++){
+						if(allsplit[a].indexOf('/') == 1){
+							var nymanad = allsplit[a].split('/');
+							var forstamanad = nymanad[1] - 1;
+							var a = allsplit.length;
+						};
+					};
+					var datearray = [];
+					var arinput = document.getElementById('ar').value;
+					var artext = arinput;
+					for (var b = 0; b < allsplit.length; b++){
+						if(allsplit[b] == ''){
+							datearray.push('');
+						}else{
+							if(allsplit[b].indexOf('/') == 1){
+								var nymanad = allsplit[b].split('/');
+								if(forstamanad == '12' && nymanad[1] == '1'){
+									var nyttar = parseInt(arinput) + 1;
+									var artext = nyttar;
+								};
+								var forstamanad = nymanad[1];
+								datearray.push(artext + '-' + addnolla(nymanad[1]) + '-' + addnolla(nymanad[0]));
+							}else{
+								datearray.push(artext + '-' + addnolla(forstamanad) + '-' + addnolla(allsplit[b]));
+							};
+						};
+					};
+					return datearray[number];
+				};
+			};
+		};
+		function addnolla(nummer){
+			if(nummer <= 9){
+				return '0' + nummer;
+			}else{
+				return nummer;
+			};
+		};
+		function getyear(){
+			var d = new Date();
+			var n = d.getFullYear();
+			var input = document.getElementById('ar').value = n;
+			var input = document.getElementById('ar').max = (parseInt(n) + 100);
+		}
+	</script>
+</head>
+<body onload="getyear();">
+	<input type="number" min="1900" step="1" value="" id="ar"/><label>År schemat startar</label><br/>
+	<textarea id="pastetext"></textarea><label>All text från Excel fil</label><br/>
+	<input type="button" value="Analysera" onclick="analyse();">
+	<div id="resultat"></div>
+	<script src="/socket.io/socket.io.js"></script>
+	<script type="text/javascript">
+		//Tar server id enbart för att koppla till socket
+		var geturl = window.location.href.replace('http://', '').split('/')[0];
+		
+		//Lyssnar om server säger något
+		var socket = io.connect(geturl);
+
+		// Visar i console log status från server
+		socket.on('message', function(message) {
+			console.log(message);
+		});
+
+	</script>
+</body>
+</html>

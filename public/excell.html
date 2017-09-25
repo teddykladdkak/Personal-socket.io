@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Personal excell vy</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+	<meta content="yes" name="apple-mobile-web-app-capable" />
+	<meta content="yes" name="mobile-web-app-capable" />
+	<meta content="minimum-scale=1.0, width=device-width, maximum-scale=0.6667, user-scalable=no" name="viewport" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+	<script src="config.js" type="text/javascript"></script>
+	<script src="personal.js" type="text/javascript"></script>
+	<script src="script.js" type="text/javascript"></script>
+	<script type="text/javascript">
+		var allnames = [];
+		var days = 0;
+		if(!sessionStorage.getItem('antaldagar')){
+			var daysfraga = prompt(config.text.excellfraga.text, config.text.excellfraga.nummer);
+			if(!parseInt(daysfraga)){
+				location.reload();
+			}else if(parseInt(daysfraga) <= 0){
+				location.reload();
+			}else if (daysfraga != null) {
+				var days = daysfraga;
+			}else{
+				location.reload();
+			};
+		}else{
+			var days = sessionStorage.getItem('antaldagar');
+			sessionStorage.removeItem('antaldagar');
+		};
+		function uppdatera(){
+			showload();
+			sessionStorage.setItem('antaldagar', days);
+			location.reload();
+		};
+		var start = 0;
+		var checktime;
+		function nydag(){
+			var firsttddate = document.getElementById('datetr').getElementsByTagName('td')[1].getAttribute('id');
+			if(datum().replace(/-/g, '') <= firsttddate.replace(/-/g, '')){}else{
+				uppdatera();
+			};
+		};
+		function makeid(namn){return namn.replace(/\s/g,'').replace( /\W/g , '').toLowerCase();};
+		var messagearray = [];
+		function load(message){
+			//Tar bort redigera meny ifall den finns framme
+			stopchange();
+			//Uppdaterar till ny dag
+			clearInterval(checktime);
+			checktime = setInterval(function(){
+				nydag();
+			}, 1000 * 60);
+			//Skapar mini datum och lägger till det högst upp
+			var datetr = document.getElementById('datetr');
+			var datsplit = message.datum.split('-');
+			var datpritty = parseInt(datsplit[2]) + '/' + parseInt(datsplit[1]);
+				var datelement = document.createElement('td');
+					datelement.setAttribute('id', message.datum);
+					var datelementtext = document.createTextNode(datpritty);
+					datelement.appendChild(datelementtext);
+				datetr.appendChild(datelement);
+			//Plussar med ett för att få slut någon gång! :D
+			start++;
+			//Lägger till all information i en array
+			messagearray.push(message);
+			//Loopar till start är lika med satta dagar.
+			if(start >= days){
+				printpersons();
+				stopload();
+			}else{
+				var param = {datum: datum(start), tid: 'allt', return: 'harfardudata'};
+				socket.emit('getdatafromdate', param);
+			};
+			if(config.excellfarg){
+				addcolor();
+			};
+		};
+		function extractmessage(messagearray){
+			var alltogether = [];
+			for (var c = 0; c < messagearray.length; c++){
+				var nyarray = [];
+				for (var i = 0; i < config.passarray.length; i++){
+					var pass = messagearray[c][config.passarray[i]];
+					for (var a = 0; a < config.uppgifterarray.length; a++){
+						var uppgiftid = config.uppgifterarray[a].id;
+						var personer = pass[uppgiftid];
+						if(!personer){}else{
+							for (var b = 0; b < personer.length; b++){
+								if(config.uppgifterarray[a].showexcell){
+									personer[b].uppgift = uppgiftid;
+									personer[b].pass = config.pass[config.passarray[i]].kort;
+									personer[b].datum = messagearray[c].datum;
+									alltogether.push(personer[b]);
+								};
+							};
+						};
+					};
+				};
+			};
+			return alltogether;
+		};
+		function sortbyname(message){
+			var namearray = [];
+			for (var i = message.length - 1; i >= 0; i--) {
+				var personid = makeid(message[i].namn) + makeid(message[i].titel) + makeid(message[i].uppgift) + makeid(message[i].pass);
+				message[i].sortid = personid
+				namearray.push(personid);
+			};
+			var sorteradenamn = namearray.sort();
+			var arrayofsortednames = [];
+			for (var i = 0; i < sorteradenamn.length; i++){
+				for (var a = 0; a < message.length; a++){
+					if(sorteradenamn[i] == message[a].sortid){
+						arrayofsortednames.push(message[a]);
+					};
+				};
+			};
+			return arrayofsortednames;
+		};
+		function sortbyyrke(message){
+			var arrayuppdeladeyrken = {};
+			for (var i = 0; i < message.length; i++){
+				if(!arrayuppdeladeyrken[message[i].titel]){
+					arrayuppdeladeyrken[message[i].titel] = [];
+				};
+				arrayuppdeladeyrken[message[i].titel].push(message[i]);
+			};
+			for (var i = 0; i < config.titlar.length; i++){
+				if(!arrayuppdeladeyrken[config.titlar[i].code]){}else{
+					var sorterade = sortbyname(arrayuppdeladeyrken[config.titlar[i].code]);
+					arrayuppdeladeyrken[config.titlar[i].code] = sorterade;
+				};
+			};
+			return arrayuppdeladeyrken;
+		};
+		function printpersons(){
+			//var allinformation = sortbyname(extractmessage(messagearray));
+			if(config.excellsortering == 'namn'){
+				var allinformation = sortbyname(extractmessage(messagearray));
+				addlines(allinformation, messagearray.length);
+				for (var i = allinformation.length - 1; i >= 0; i--) {
+					addpass(allinformation[i].datum, allinformation[i]);
+				};
+			}else if(config.excellsortering == 'yrke'){
+				var allinformation = sortbyyrke(extractmessage(messagearray));
+				for (var i = config.titlar.length - 1; i >= 0; i--) {
+					var yrkesarray = allinformation[config.titlar[i].code];
+					if(!yrkesarray){}else{
+						addhead(config.titlar[i].rubrik, messagearray.length);
+						addlines(yrkesarray, messagearray.length);
+						for (var a = yrkesarray.length - 1; a >= 0; a--) {
+							addpass(yrkesarray[a].datum, yrkesarray[a]);
+						};
+					};
+				};
+			}else{
+				var allinformation = sortbyname(extractmessage(messagearray));
+				addlines(allinformation, messagearray.length);
+				for (var i = allinformation.length - 1; i >= 0; i--) {
+					addpass(allinformation[i].datum, allinformation[i]);
+				};
+			};
+		};
+		function addhead(titel, antaldagar){
+			var wrapper = document.getElementById('personalwrapper');
+				var tr = document.createElement('tr');
+					var tdnamn = document.createElement('td');
+						tdnamn.setAttribute('colspan', antaldagar + 1);
+						tdnamn.setAttribute('class', 'tdhead');
+						var tdnamntext = document.createTextNode(titel);
+						tdnamn.appendChild(tdnamntext);
+					tr.appendChild(tdnamn);
+				wrapper.appendChild(tr);
+		};
+		function addlines(information, antaltd){
+			for (var i = 0; i < information.length; i++){
+				var personline = document.getElementById(makeid(information[i].titel) + makeid(information[i].namn));
+				if(!personline){
+					nyperson(information[i].titel, information[i].namn);
+					for (var a = 0; a < antaltd; a++){
+						emptytd(a + 1, information[i].titel, information[i].namn);
+					};
+				};
+			};
+		};
+		function nyperson(titel, namn){
+			var wrapper = document.getElementById('personalwrapper');
+				var tr = document.createElement('tr');
+					tr.setAttribute('id', makeid(titel) + makeid(namn));
+					tr.setAttribute('data-titel', titel);
+					tr.setAttribute('data-namn', namn);
+					var tdnamn = document.createElement('td');
+						var tdnamntext = document.createTextNode(namn);
+						tdnamn.appendChild(tdnamntext);
+					tr.appendChild(tdnamn);
+				wrapper.appendChild(tr);
+		};
+		function emptytd(startnummer, titel, namn){
+			var datetd = document.getElementById('datetr').getElementsByTagName('td')[startnummer].getAttribute('id');
+			var person = {'titel': titel, 'namn': namn};
+			nytd(datetd, person, true);
+		};
+		function nytd(datumtosend, person, emty){
+			var personline = document.getElementById(makeid(person.titel) + makeid(person.namn));
+				var td = document.createElement('td');
+					td.setAttribute('id', makeid(person.titel) + makeid(person.namn) + nummertilltext(datumtosend));
+					td.setAttribute('data-datum', datumtosend);
+					td.setAttribute('onclick', 'redigera(this);');
+					td.setAttribute('data-namn', person.namn);
+					td.setAttribute('data-titel', person.titel);
+					if(!emty){
+						td.setAttribute('data-uppgift', person.uppgift);
+						td.setAttribute('data-pass', person.pass);
+						var tdtext = document.createTextNode(person.pass);
+						td.appendChild(tdtext);
+					}else{
+						td.setAttribute('data-uppgift', '');
+						td.setAttribute('data-pass', '');
+					};
+				personline.appendChild(td);
+		};
+		function addpass(datum, person){
+			var tdelement = document.getElementById(makeid(person.titel) + makeid(person.namn) + nummertilltext(datum));
+			if(!tdelement){
+				nytd(datum, person, false);
+			}else{
+				if(!tdelement.getAttribute('data-uppgift')){var uppgift = '';}else{
+					var uppgift = tdelement.getAttribute('data-uppgift') + '####';
+				};
+				tdelement.setAttribute('data-uppgift', uppgift + person.uppgift);
+				if(!tdelement.getAttribute('data-pass')){var pass = '';}else{
+					var pass = tdelement.getAttribute('data-pass') + '####';
+				};
+				tdelement.setAttribute('data-pass', pass + person.pass);
+				if(!tdelement.getAttribute('data-titel')){var titel = '';}else{
+					var titel = tdelement.getAttribute('data-titel') + '####';
+				};
+				tdelement.setAttribute('data-titel', titel + person.titel);
+				if(!tdelement.getAttribute('data-namn')){var namn = '';}else{
+					var namn = tdelement.getAttribute('data-namn') + '####';
+				};
+				tdelement.setAttribute('data-namn', namn + person.namn);
+				tdelement.innerText = tdelement.getAttribute('data-pass').replace(/####/g, '+');
+			};
+		};
+		function nummertilltext(nummer){
+			var uppdelat = nummer.replace(/-/g, '').split('');
+			var tosend = [];
+			for (var i = 0; i < uppdelat.length; i++){
+				if(uppdelat[i] == '1'){
+					tosend.push('ett');
+				}else if(uppdelat[i] == '2'){
+					tosend.push('tva');
+				}else if(uppdelat[i] == '3'){
+					tosend.push('tre');
+				}else if(uppdelat[i] == '4'){
+					tosend.push('fyra');
+				}else if(uppdelat[i] == '5'){
+					tosend.push('fem');
+				}else if(uppdelat[i] == '6'){
+					tosend.push('sex');
+				}else if(uppdelat[i] == '7'){
+					tosend.push('sju');
+				}else if(uppdelat[i] == '8'){
+					tosend.push('atta');
+				}else if(uppdelat[i] == '9'){
+					tosend.push('nio');
+				}else if(uppdelat[i] == '0'){
+					tosend.push('noll');
+				};
+			};
+			return tosend.join('');
+		};
+		function addcolor(){
+			var wrapper = document.getElementById('explain');
+			while (wrapper.hasChildNodes()) {wrapper.removeChild(wrapper.firstChild);};
+				var table = document.createElement('table');
+					for (var i = config.uppgifterarray.length - 1; i >= 0; i--) {
+						var todo = config.uppgifterarray[i].showexcell;
+						if(todo){
+							var tr = document.createElement('tr');
+								var info = document.createElement('td');
+									info.setAttribute('style', 'background-color: ' + config.uppgifterarray[i].farg);
+									var infotext = document.createTextNode(config.uppgifterarray[i].id.toUpperCase());
+									info.appendChild(infotext);
+								tr.appendChild(info);
+							table.appendChild(tr);
+						};
+					};
+				wrapper.appendChild(table);
+			addstyletotd();
+		};
+		function addstyletotd(){
+			var alltd = document.getElementById('wrapper').getElementsByTagName('td');
+			for (var i = alltd.length - 1; i >= 0; i--) {
+				alltd[i].removeAttribute('style');
+				if(!alltd[i].getAttribute('data-uppgift')){}else{
+					var fargarray = [];
+					var alluppgifter = alltd[i].getAttribute('data-uppgift').split('####');
+					for (var a = alluppgifter.length - 1; a >= 0; a--) {
+						fargarray.push(finduppgiftcolor(alluppgifter[a]));
+					};
+					alltd[i].setAttribute('style', makestyletotd(fargarray));
+				};
+			};
+		};
+		function finduppgiftcolor(id){
+			for (var i = config.uppgifterarray.length - 1; i >= 0; i--) {
+				if(config.uppgifterarray[i].id == id){
+					return config.uppgifterarray[i].farg;
+				};
+			};
+		};
+		function makestyletotd(array){
+			if(array.length == 1){
+				return 'background: ' + array[0];
+			}else{
+				var percent = 100 / array.length;
+				var going = 0;
+				var kode = '';
+				for (var i = array.length - 1; i >= 0; i--) {
+					var kode = kode + ', ' + array[i] + ' ' + Math.floor(going) + '%'
+					var going = going + percent;
+					var kode = kode + ', ' + array[i] + ' ' + Math.floor(going) + '%'
+				};
+				return 'background: ' + array[0] + ';background: -moz-linear-gradient(left' + kode + ');background: -webkit-linear-gradient(left' + kode + ');background: linear-gradient(to right' + kode + ');'
+			};
+		};
+		function startover(){
+			window['start'] = 0;
+			window['messagearray'] = [];
+			window['allnames'] = [];
+			var datum = document.getElementById('datetr');
+			while (datum.hasChildNodes()) {datum.removeChild(datum.firstChild);};
+				var emtytd = document.createElement('td');
+				datum.appendChild(emtytd);
+			var table = document.getElementById('personalwrapper');
+			while (table.hasChildNodes()) {table.removeChild(table.firstChild);};
+		};
+		function index(el) {
+			if (!el) return -1;
+			var i = 0;
+			do {
+				i++;
+			} while (el = el.previousElementSibling);
+			return i;
+		};
+		function redigera(element){
+			var redigerawrapper = document.getElementById('redigerameny');
+			var uppgifter = element.getAttribute('data-uppgift').split('####'); //"samordnare####rond"
+			var pass = element.getAttribute('data-pass').split('####'); //"A####C"
+			var titel = element.getAttribute('data-titel').split('####')[0];
+			var namn = element.getAttribute('data-namn').split('####')[0];
+			var datum = element.getAttribute('data-datum');
+				var rubrik = document.createElement('h2');
+					var rubriktext = document.createTextNode(namn + ' (' + titel + ') ' + datum);
+					rubrik.appendChild(rubriktext);
+				redigerawrapper.appendChild(rubrik);
+			for (var i = 0; i < uppgifter.length; i++){
+				redigerawrapper.appendChild(addredigerapass(pass[i], uppgifter[i]));
+			};
+			addbutton(redigerawrapper, 'Spara', 'sendchange("' + uppgifter.join('####') + '", "'+ pass.join('####') + '", "' + titel + '", "' + namn + '", "' + datum + '");');
+			addbutton(redigerawrapper, 'Avbryt', 'stopchange();');
+			redigerawrapper.removeAttribute('style');
+		};
+		function stopchange(){
+			var redigerawrapper = document.getElementById('redigerameny');
+				redigerawrapper.setAttribute('style', 'display: none;');
+				while (redigerawrapper.hasChildNodes()) {redigerawrapper.removeChild(redigerawrapper.firstChild);};
+		};
+		function addredigerapass(pass, uppgifter){
+			var wrapper = document.createElement('span');
+				var passarray = []
+				for (var a = 0; a < config.passarray.length; a++){
+					passarray.push({"id": config.pass[config.passarray[a]].kort, "rubrik": config.pass[config.passarray[a]].rubrik});
+				};
+				wrapper.appendChild(addselect(pass, passarray, 'redigerapass'));
+				wrapper.appendChild(addselect(uppgifter, config.uppgifterarray, 'redigerauppgift'));
+				for (var a = 0; a < config.buttons.length - 1; a++){
+					addbutton(wrapper, config.buttons[a].value, config.buttons[a].action);
+				};
+				brake(wrapper);
+			return wrapper;
+		}
+		function sendchange(olduppgifter, oldpass, titel, namn, datum){
+			var arraytosend = {};
+			var olduppgiftersplit = olduppgifter.split('####');
+			var oldpasssplit = oldpass.split('####');
+			var oldarray = [];
+			for (var i = 0; i < olduppgiftersplit.length; i++){
+				if(olduppgiftersplit[i] == ''){}else{
+					oldarray.push({"uppgift": olduppgiftersplit[i], "pass": oldpasssplit[i]});
+				};
+			};
+				arraytosend.old = oldarray;
+			var nyapass = document.getElementsByName('redigerapass');
+			var nyauppgifter = document.getElementsByName('redigerauppgift');
+			var nyttarray = [];
+			for (var i = 0; i < nyapass.length; i++){
+				nyttarray.push({"uppgift": nyauppgifter[i].value, "pass": nyapass[i].value});
+			};
+				arraytosend.nytt = nyttarray;
+				arraytosend.titel = titel;
+				arraytosend.datum = datum;
+				arraytosend.namn = namn;
+			console.log(arraytosend);
+			socket.emit('excellnyuser', arraytosend);
+		};
+		function addbutton(element, value, action){
+			var removeinput = document.createElement('input');
+				removeinput.setAttribute('type', 'button');
+				removeinput.setAttribute('value', value);
+				removeinput.setAttribute('onclick', action);
+			element.appendChild(removeinput);
+		};
+		function addselect(toselect, array, name){
+			var select = document.createElement('select');
+				select.setAttribute('name', name);
+			for (var a = 0; a < array.length; a++){
+				var option = document.createElement('option');
+					option.setAttribute('value', array[a].id);
+					if(toselect == array[a].id){
+						option.setAttribute('selected', 'true');
+					};
+					var optiontext = document.createTextNode(array[a].rubrik);
+					option.appendChild(optiontext);
+				select.appendChild(option);
+			};
+			return select;
+		};
+		function brake(element){
+			element.appendChild(document.createElement('br'));
+		};
+		function addnewline(element){
+			var redigerawrapper = document.getElementById('redigerameny');
+			var nylinje = addredigerapass(redigerawrapper, config.pass[config.passarray[0]].kort, config.uppgifterarray[0].id);
+			var parent = element.parentElement;
+			if (parent.nextSibling) {
+			  parent.parentNode.insertBefore(nylinje, parent.nextSibling);
+			}
+			else {
+			  parent.parentNode.appendChild(nylinje);
+			};
+		};
+		function removeline(element){
+			element.parentElement.parentElement.removeChild(element.parentElement);
+		};
+
+
+
+
+
+
+		/*
+		När förändring görs på excell
+		socket.emit('excellnyuser', param);
+		*/
+
+	</script>
+	<style type="text/css">
+		*{
+			margin: 0px;
+			padding: 0px;
+		}
+		table, td {
+			border-collapse: collapse;
+			border: 2px solid #000;
+		}
+		td {
+			padding: 3px;
+			text-align: center;
+			white-space: nowrap;
+		}
+		td:nth-child(1) {
+			text-align: left;
+		}
+		#explain {
+			margin-top: 20px;
+		}
+		#redigerameny {
+			width: 500px;
+			max-width: 100%;
+		    height: 150px;
+		    background-color: lightgray;
+		    padding: 5px;
+		    position: fixed;
+		    top:0;
+		    bottom: 0;
+		    left: 0;
+		    right: 0;
+		    margin: auto;
+		}
+		#load {
+			width: 100%;
+		    height: 100%;
+		    position: fixed;
+		    top:0;
+		    bottom: 0;
+		    left: 0;
+		    right: 0;
+		    margin: auto;
+		    text-align: center;
+		    vertical-align: center;
+		}
+		.tdhead {
+			font-weight: bold;
+		}
+	</style>
+</head>
+<body>
+	<div id="load" style="display: none;"><img src="load.gif"></div>
+	<div id="redigerameny" style="display: none;"></div>
+	<div id="wrapper">
+		<table>
+			<thead><tr id="datetr"><td></td></tr></thead>
+			<tbody id="personalwrapper"></tbody>
+		</table>
+	</div>
+	<div id="explain"></div>
+	<!--<input type="button" value="Färger" onclick="addcolor()" name="">
+	<input type="button" value="Sortera (Namn)" onclick="sort('namn')" name="">
+	<input type="button" value="Sortera (Yrke)" onclick="sort('yrke')" name="">-->
+	<script src="/socket.io/socket.io.js"></script>
+	<script type="text/javascript">
+		function showload(){
+			document.getElementById('load').removeAttribute('style');
+		};
+		function stopload(){
+			document.getElementById('load').setAttribute('style', 'display: none;');
+		};
+		showload();
+		//Tar server id enbart för att koppla till socket
+		var geturl = window.location.href.replace('http://', '').split('/')[0];
+		
+		//Lyssnar om server säger något
+		var socket = io.connect(geturl);
+
+		// Visar i console log status från server
+		socket.on('message', function(message) {
+			console.log(message);
+		});
+
+		//Om anslutning försvinner till server
+		socket.on('disconnect', function () {
+			uppdatera();
+		});
+		// Om server skickar ifall användaren vill ha data
+		socket.on('villduhadata', function(message) {
+			var param = {datum: datum(), tid: 'allt', return: 'harfardudata'};
+			socket.emit('getdatafromdate', param);
+		});
+
+		// När server skickar data
+		socket.on('harfardudata', function(message) {
+			load(message);
+		});
+
+		//Döljer meny när uppdatering är gjord på servern
+		socket.on('hidemenu', function(message) {
+			hidemeny();
+		});
+
+		// Vid förändring på server frågar den ifall datum är aktuellt att uppdatera
+		socket.on('ardatumaktuell', function(message) {
+			var dateelement = document.getElementById(message);
+			if(!dateelement){}else{
+				//uppdatera();
+				showload();
+				startover();
+				var param = {datum: datum(start), tid: 'allt', return: 'harfardudata'};
+				socket.emit('getdatafromdate', param);
+			};
+		});
+	</script>
+</body>
+</html>

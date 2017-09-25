@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Chema injektion</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+	<meta content="yes" name="apple-mobile-web-app-capable" />
+	<meta content="yes" name="mobile-web-app-capable" />
+	<meta content="minimum-scale=1.0, width=device-width, maximum-scale=0.6667, user-scalable=no" name="viewport" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+	<script src="config.js"></script>
+	<script src="shim.js"></script>
+	<script src="xlsx.full.min.js"></script>
+<script type="text/javascript">
+	function analysera(kod){
+		var yrke = document.getElementById('yrke').value;
+		if(yrke == 'lak'){
+			medinet(kod, yrke);
+		}else{
+			heroma(kod, yrke);		
+		};
+	};
+	function medinet(kod, yrke){
+		//Skapar array av html
+		var alllines = document.getElementById('htmlout').getElementsByTagName('tbody')[0].getElementsByTagName('tr');var linearray = [];for (var i = 0; i < alllines.length; i++){var allcol = alllines[i].getElementsByTagName('td');var colarray = [];for (var a = 0; a < allcol.length; a++){colarray.push(allcol[a].innerText);};linearray.push(colarray);};
+		//Tar fram år
+		var yearcol = linearray[0][1].split(', ');
+		var year = yearcol[yearcol.length - 1].replace(')', '');
+		//Klipper allt före "omrade". Om det inte funkar skickas felmeddelande
+		var tocut = 'none';
+		for (var i = 0; i < linearray.length; i++){
+			if(linearray[i][0] == config.medinet.rubrik){
+				var tocut = i - 1;
+				break;
+			};
+		};
+		//Klipper allt efter "omrade".
+		if(tocut == 'none'){alert(config.medinet.felmeddelande);console.log('Kunde inte hitta område: ' + config.medinet.rubrik + ', i funktionen medinet();')}else{
+			var firstcut = linearray.slice(tocut);
+			for (var i = 0; i < firstcut.length; i++){
+				if(i == 0){}else{
+					if(firstcut[i][0] == ""){
+						var nextcut = i;
+						break;
+					};
+				};
+			};
+			var secondcut = firstcut.slice(0, nextcut);
+			//console.log(secondcut);
+			var datearray = [];
+			for (var i = 0; i < secondcut[0].length; i++){
+				if(secondcut[0][i] == ''){}else{
+					var month = monthtonumber(secondcut[0][i]);
+					if(month <= 9){var month = '0' + month};
+					var day = parseInt(secondcut[0][i].replace(/\D/g,''));
+					if(day <= 9){var day = '0' + day};
+					datearray.push({date: year + '-' + month + '-' + day, start: i});
+				};
+			};
+			var koddatum = [];
+			var kodattskicka = {};
+			for (var i = 0; i < datearray.length; i++){
+				var index = datearray[i].start
+				for (var a = 0; a < secondcut.length; a++){
+					for (var b = 0; b < config.medinet.medinetpass.length; b++){
+						if(secondcut[a][index].indexOf(config.medinet.medinetpass[b].kod) != -1){
+							var namncol = secondcut[a][0].split(', ');
+							var efternamn = namncol[0];
+							var fornamn = namncol[1].split(' ')[0];
+							if(!kodattskicka[datearray[i].date]){
+								kodattskicka[datearray[i].date] = [];
+								koddatum.push(datearray[i].date);
+								kodattskicka[datearray[i].date].push({"namn": fornamn + ' ' + efternamn, "titel": yrke, "passtyp": "A", uppgift: config.medinet.medinetpass[b].id});
+							}else{
+								kodattskicka[datearray[i].date].push({"namn": fornamn + ' ' + efternamn, "titel": yrke, "passtyp": "A", uppgift: config.medinet.medinetpass[b].id});
+							};
+						};
+					};
+				};
+			};
+			/*console.log(koddatum);
+			console.log(kodattskicka);*/
+			socket.emit('skickamedinet', {datum: koddatum, data: kodattskicka});
+			startload();
+		};
+	};
+	function startload(){
+		document.getElementsByTagName('body')[0].setAttribute('style', 'background-color: #000;');
+		document.getElementById('xlf').disabled = true;
+	};
+	function stopload(){
+		document.getElementsByTagName('body')[0].removeAttribute('style');
+		document.getElementById('xlf').disabled = false;
+		alert('Information har lagts till på servern.');
+	};
+	function monthtonumber(kodtext){
+		for (var i = 0; i < config.monader.length; i++){
+			if(kodtext.indexOf(config.monader[i]) != -1){
+				return i + 1;
+			};
+		};
+	};
+	function heroma(kod, yrke){
+		var alllines = document.getElementById('htmlout').getElementsByTagName('tbody')[0].getElementsByTagName('tr');var linearray = [];for (var i = 0; i < alllines.length; i++){var allcol = alllines[i].getElementsByTagName('td');var colarray = [];for (var a = 0; a < allcol.length; a++){colarray.push(allcol[a].innerText);};linearray.push(colarray);};
+		//Delar upp kod som i excell
+		var headarray = [];var insertarray = [];for (var i = 0; i < linearray.length; i++){if(linearray[i][0] == ""){if(insertarray.length == 0){}else{headarray.push(insertarray);};var insertarray = [];}else{insertarray.push(linearray[i]);};};headarray.push(insertarray);
+		//Kontrollerar ifall det är rätt excell
+		if(headarray[0][0][0] == 'Förnamn'){}else{alert(config.heroma.felmeddelande);console.log('Kunde inte hitta område "Förnamn" som start, vilket ingår i excellens layout.');return};
+		//Ändrar datum
+		for (var i = 0; i < headarray.length; i++){
+			for (var a = 0; a < headarray[i][0].length; a++){
+				headarray[i][0][a] = headarray[i][0][a].split(' ')[0];
+			};
+		};
+		//Ändrar flytande kod till JSON
+		var kodattskicka = {};var koddatum = [];for (var i = 0; i < headarray.length; i++){for (var a = 0; a < headarray[i].length; a++){if(a == 0){}else{for (var b = 0; b < headarray[i][a].length; b++){if(b == 0 || b == 1){}else{if(headarray[i][a][b] == ''){}else{var passtyp = hittaheromapass(headarray[i][a][b]);if(passtyp == 'none'){}else{var namn = headarray[i][a][0] + ' ' + headarray[i][a][1];var datum = headarray[i][0][b];if(!kodattskicka[datum]){kodattskicka[datum] = [];koddatum.push(datum);kodattskicka[datum].push({"namn": namn, "titel": yrke, "passtyp": passtyp});}else{kodattskicka[datum].push({"namn": namn, "titel": yrke, "passtyp": passtyp});};};};};};};};};
+		//Blir två "objekt", en där alla aktuella datum finns, och en JSON där rubrikerna är datumen.
+		console.log(koddatum);
+		console.log(kodattskicka);
+		socket.emit('skickaheroma', {datum: koddatum, data: kodattskicka});
+		startload();
+	};
+	function hittaheromapass(kodtext){
+		for (var i = config.heroma.heromaexkludering.length - 1; i >= 0; i--) {if(kodtext.indexOf(config.heroma.heromaexkludering[i]) != -1){return 'none';};};for (var i = config.heroma.heromapass.length - 1; i >= 0; i--) {if(kodtext.indexOf(config.heroma.heromapass[i].text) != -1){return config.heroma.heromapass[i].kod;};};return 'none';
+	};
+</script>
+<style type="text/css">
+	table, tr, td{
+		border-collapse: collapse;
+		border: solid 1px #000;
+	}
+	#htmlout{
+		display: none;
+	}
+	input, select{
+		zoom: 2;
+	}
+</style>
+</head>
+<body>
+<h1>Schema injektorn!</h1>
+<p>Detta är ett verktyg för att enkellt föra in information från nuvarande schema program Heroma eller Medinet.</p>
+<p>Sidan analyserar och tar ut aktuell infromation från excellfilen. Läkarna har redan satta uppgifter och läggs pga detta direkt in på rätt plats. Övrig vårdpersonal från heroma har ingen direkt satt uppgift och kommer därför läggas i "osorterade", dessa kan enkellt dras till sin uppgift i "redigera.html".</p>
+<p>Personer som tidigare är satta på uppgifter kommer inte tas bort med detta verktyg utan måste göras manuellt. Osorterade kommer ändras av detta verktyg.</p>
+<h2>Välj yrke på personal du tänkt lägga till.</h2>
+<select id="yrke">
+	<option value="lak">Läkare</option>
+	<option value="ssk">Sjuksköterska</option>
+	<option value="usk">Undersköterska</option>
+</select>
+<h2>Välj excellfil som du laddat ner från antingen Heroma eller Medinet.</h2>
+<input type="file" name="xlfile" id="xlf">
+<pre id="out"></pre>
+<div id="htmlout"></div>
+</body>
+	<script src="/socket.io/socket.io.js"></script>
+	<script type="text/javascript">
+		//Tar server id enbart för att koppla till socket
+		var geturl = window.location.href.replace('http://', '').split('/')[0];
+		
+		//Lyssnar om server säger något
+		var socket = io.connect(geturl);
+
+		// Visar i console log status från server
+		socket.on('message', function(message) {
+			console.log(message);
+		});
+
+		socket.on('done', function(message) {
+			stopload();
+		});
+
+		//Om anslutning försvinner till server
+		socket.on('disconnect', function () {
+			location.reload();
+		});
+	</script>
+<script>
+var X = XLSX;var global_wb;var process_wb = (function() {var OUT = document.getElementById('out');var HTMLOUT = document.getElementById('htmlout');var get_format = (function() {var radios = document.getElementsByName( "format" );return function() {for(var i = 0; i < radios.length; ++i) if(radios[i].checked || radios.length === 1) return radios[i].value;};})();var to_html = function to_html(workbook) {HTMLOUT.innerHTML = "";var htmldata = '';workbook.SheetNames.forEach(function(sheetName) {var htmlstr = X.write(workbook, {sheet:sheetName, type:'binary', bookType:'html'});HTMLOUT.innerHTML += htmlstr;htmldata += htmlstr;});analysera(htmldata);return "";};return function process_wb(wb) {global_wb = wb;var output = "";switch(get_format()) {default: output = to_html(wb);/*to_csv(wb);*/}};})();var do_file = (function() {var rABS = typeof FileReader !== "undefined" && (FileReader.prototype||{}).readAsBinaryString;return function do_file(files) {rABS = true;var f = files[0];var reader = new FileReader();reader.onload = function(e) {if(typeof console !== 'undefined') console.log("onload", new Date(), rABS);var data = e.target.result;if(!rABS) data = new Uint8Array(data);else process_wb(X.read(data, {type: rABS ? 'binary' : 'array'}));};if(rABS) reader.readAsBinaryString(f);else reader.readAsArrayBuffer(f);};})();(function() {var xlf = document.getElementById('xlf');if(!xlf.addEventListener) return;function handleFile(e) { do_file(e.target.files); }xlf.addEventListener('change', handleFile, false);})();
+</script>
+</html>

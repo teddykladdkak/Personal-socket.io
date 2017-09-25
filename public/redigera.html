@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Personal-redigera</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+	<meta content="yes" name="apple-mobile-web-app-capable" />
+	<meta content="yes" name="mobile-web-app-capable" />
+	<meta content="minimum-scale=1.0, width=device-width, maximum-scale=0.6667, user-scalable=no" name="viewport" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+	<script src="config.js" type="text/javascript"></script>
+	<script src="personal.js" type="text/javascript"></script>
+	<script src="script.js" type="text/javascript"></script>
+	<script type="text/javascript">
+		function load(){
+			adddatalist();
+			var dateinput = document.getElementById('dateinput').setAttribute('value', datum());
+			var wrapper = document.getElementById('wrapper');
+				var table = document.createElement('table');
+					var thead = document.createElement('thead');
+						var trhead = document.createElement('tr');
+						for (var b = 0; b < config.passarray.length; b++){
+							var tdhead = document.createElement('td');
+								var tdheadtext = document.createTextNode(config.pass[config.passarray[b]].rubrik);
+								tdhead.appendChild(tdheadtext);
+							trhead.appendChild(tdhead);
+						};
+						thead.appendChild(trhead);
+					table.appendChild(thead);
+					var tbody = document.createElement('tbody');
+						var tr = document.createElement('tr');
+						for (var b = 0; b < config.passarray.length; b++){
+							var td = document.createElement('td');
+							for (var i = 0; i < config.pass[config.passarray[b]].elements.length; i++){
+								var head = document.createElement('p');
+									var headtext = document.createTextNode(config.pass[config.passarray[b]].elements[i].rubrik);
+									head.appendChild(headtext);
+								td.appendChild(head);
+								var alldiv = document.createElement('div');
+								for (var a = 0; a < config.pass[config.passarray[b]].elements[i].titels.length; a++){
+									alldiv.appendChild(addpersonline(config.pass[config.passarray[b]].elements[i].titels[a], config.passarray[b], config.pass[config.passarray[b]].elements[i].id));
+								};
+								td.appendChild(alldiv);
+							};
+							tr.appendChild(td);
+						};
+						tbody.appendChild(tr);
+						var trtoday = document.createElement('tr');
+							var tdtoday = document.createElement('td');
+								tdtoday.setAttribute('colspan', config.passarray.length)
+								var todayhead = document.createElement('p');
+									var todayheadtext = document.createTextNode(config.fritext);
+									todayhead.appendChild(todayheadtext);
+								tdtoday.appendChild(todayhead);
+								var todaytextarea = document.createElement('textarea');
+									todaytextarea.setAttribute('id', 'dagensaktiviteter');
+									todaytextarea.setAttribute('onchange', 'somethingchanged();');
+								tdtoday.appendChild(todaytextarea);
+							trtoday.appendChild(tdtoday);
+						tbody.appendChild(trtoday);
+						var trinkom = document.createElement('tr');
+							var tdinkom = document.createElement('td');
+								tdinkom.setAttribute('colspan', config.passarray.length)
+								var inkommande = document.createElement('p');
+									var inkommandetext = document.createTextNode(config.planerad);
+									inkommande.appendChild(inkommandetext);
+								tdinkom.appendChild(inkommande);
+								var inkommandeinput = document.createElement('input');
+									inkommandeinput.setAttribute('type', 'number');
+									inkommandeinput.setAttribute('value', '0');
+									inkommandeinput.setAttribute('id', 'inkommande');
+									inkommandeinput.setAttribute('onchange', 'somethingchanged();');
+								tdinkom.appendChild(inkommandeinput);
+							trinkom.appendChild(tdinkom);
+						tbody.appendChild(trinkom);
+					table.appendChild(tbody);
+				wrapper.appendChild(table);
+		};
+		function addosorterade(array){
+			var osorteradewrapper = document.getElementById('osorterade');
+			while (osorteradewrapper.hasChildNodes()) {osorteradewrapper.removeChild(osorteradewrapper.firstChild);};
+			for (var i = array.length - 1; i >= 0; i--) {
+				var span = document.createElement('div');
+					span.setAttribute('class', 'osorterade');
+					span.setAttribute('draggable', 'true');
+					span.setAttribute('data-namn', array[i].namn);
+					span.setAttribute('data-titel', array[i].titel);
+					span.setAttribute('data-passtyp', array[i].passtyp);
+					span.setAttribute('ondragstart', 'dragIt(event, this, "' + array[i].namn + '", "' + array[i].titel + '");');
+					var spantext = document.createTextNode('[' + array[i].titel + '] ' + array[i].namn + ' [' + array[i].passtyp + ']');
+					span.appendChild(spantext);
+				osorteradewrapper.appendChild(span);
+			};	
+		};
+		function addinfo(message){
+			console.log(message);
+			var oldinputs = document.getElementsByTagName('input');
+			for (var i = 0; i < oldinputs.length; i++){
+				if(oldinputs[i].getAttribute('type') == 'date' || oldinputs[i].getAttribute('type') == 'button'){
+				}else if(oldinputs[i].getAttribute('type') == 'number'){
+					oldinputs[i].value = '0';
+				}else{
+					oldinputs[i].value = '';
+				};
+			};
+			for (var i = 0; i < config.passarray.length; i++){
+				var allauppgifter = config.pass[config.passarray[i]].elements;
+				for (var a = 0; a < allauppgifter.length; a++){
+					var uppgift = allauppgifter[a].id;
+					var pass = config.passarray[i];
+					var personal = message[pass][uppgift];
+					var allinputs = document.getElementsByClassName(pass + '-' + uppgift);
+					if(allinputs.length == personal.length){						
+					}else if(allinputs.length > personal.length){
+					}else if(allinputs.length < personal.length){
+						var nytitel = allauppgifter[a].titels[0];
+						var wrapper = allinputs[0].parentElement;
+							wrapper.appendChild(addpersonline(nytitel, pass, uppgift));
+					};
+					for (var b = 0; b < personal.length; b++){
+						allinputs[b].getElementsByClassName('personname')[0].value = personal[b].namn;
+						for (var c = config.titlar.length - 1; c >= 0; c--) {
+							if(config.titlar[c].show == personal[b].titel || config.titlar[c].code == personal[b].titel){
+								allinputs[b].getElementsByClassName('titel')[0].value = config.titlar[c].code;
+							};
+						};
+					};
+				};
+			};
+			var todayelement = document.getElementById('dagensaktiviteter').value = message.dagensaktivitet;
+			var todayelement = document.getElementById('inkommande').value = message.antalopimorgon;
+			addosorterade(message.osorterade);
+		};
+		function kollatelefon(namn, titel, pass){
+			/*console.log(namn);
+			console.log(titel);
+			console.log(pass);*/
+			
+			for (var i = configpersonal[titel].length - 1; i >= 0; i--) {
+				//console.log(configpersonal[titel][i].namn);
+				//console.log(namn);
+				if(configpersonal[titel][i].namn == namn){
+					var telefon = configpersonal[titel][i].telefon;
+					return telefon;
+				}
+			}
+			console.log(pass);
+			if(!configpersonal.standardtelefoner[pass]){
+				return '';
+			}else{
+				console.log(configpersonal.standardtelefoner[pass]);
+				return configpersonal.standardtelefoner[pass];
+			};
+		};
+		function somethingchanged(){
+			var tosave = [];
+			for (var i = 0; i < config.passarray.length; i++){
+				var typavpass = config.passarray[i];
+				var elementsfrompass = [];
+				for (var a = 0; a < config.pass[typavpass].elements.length; a++){
+					var id = config.pass[typavpass].elements[a].id;
+					var allpersons = document.getElementsByClassName(typavpass + '-' + id);
+					var personarray = [];
+					for (var b = 0; b < allpersons.length; b++){
+						var sparatitel = allpersons[b].getElementsByClassName('titel')[0].value;
+						var sparanamn = allpersons[b].getElementsByClassName('personname')[0].value;
+						if(sparanamn == '' || sparanamn == ' '){}else{
+							var persontosave = '{"titel": "' + sparatitel + '", "namn": "' + sparanamn + '", "telefon": "' + kollatelefon(sparanamn, sparatitel, id) + '"}';
+							personarray.push(persontosave);
+						};
+					};
+					elementsfrompass.push('"' + id + '": [' + personarray.join(',') + ']');
+				};
+				tosave.push('"' + typavpass + '": {' + elementsfrompass.join(',') + '}');
+			};
+			var dagensaktiviteter = document.getElementById('dagensaktiviteter').value.replace(/\r?\n|\r/g, ' ');
+			var inkommande = document.getElementById('inkommande').value;
+			var attspara = tosave.join(',');
+			var osorteradearray = [];
+			var osorteradewrapper = document.getElementsByClassName('osorterade');
+			for (var i = 0; i < osorteradewrapper.length; i++){
+				osorteradearray.push('{"namn": "' + osorteradewrapper[i].getAttribute('data-namn') + '", "titel": "' + osorteradewrapper[i].getAttribute('data-titel') + '", "passtyp": "' + osorteradewrapper[i].getAttribute('data-passtyp') + '"}');
+			};
+			var tosend = JSON.parse('{' + attspara + ', "dagensaktivitet": "' + dagensaktiviteter + '", "antalopimorgon": "' + inkommande + '", "osorterade": [' + osorteradearray + ']}');
+			var dateinput = document.getElementById('dateinput').value;
+			socket.emit('nyinfo', {datum: dateinput, data: tosend});
+		};
+		function demo(){
+			/*var demokod = {
+				formiddag: {
+					rond: [{titel: 'SSK',namn: 'Lina Nordström',telefon: '43123'},{titel: 'USK',namn: 'Marina Olofsson',telefon: '43124'}],
+					lakemedel:[{titel: 'SSK',namn: 'Evelina Nilsson',telefon: '43125'},{titel: 'SSK',namn: 'Ulrika Bodin',telefon: '43126'}],
+					overlakare: [{titel: 'LÄK',namn: 'Anna Hagman',telefon: '43385'}],
+					underlakare: [{titel: 'LÄK',namn: 'Måns Hermansson',telefon: '43936'}],
+					sammordnare: [{titel: 'USK',namn: 'Jonas Persson',telefon: '54232'}],
+					resurs: [{titel: 'USK',namn: 'Monica Sigurdsson',telefon: ''}],
+					vardinna: [{titel: 'USK',namn: 'Mohammed Abdushal',telefon: ''}]
+				},
+				eftermiddag: {
+					rond: [{titel: 'SSK',namn: 'Ulla Brittsson',telefon: '43123'},{titel: 'USK',namn: 'Erika Hermansdottir',telefon: '43124'}],
+					lakemedel:[{titel: 'SSK',namn: 'Ella Nasim',telefon: '43125'}],
+					overlakare: [],
+					underlakare: [],
+					resurs: [{titel: 'USK',namn: 'Marta Albrektsson',telefon: ''}],
+					vardinna: []
+				},
+				natt: {
+					rond: [{titel: 'SSK',namn: 'Dan Rapp',telefon: '43123'},{titel: 'USK',namn: 'Isabella Hermansson',telefon: '43124'}],
+					lakemedel:[{titel: 'SSK',namn: 'Christine Albrecktsson',telefon: '43125'}],
+					overlakare: [],
+					underlakare: [],
+					resurs: [],
+					vardinna: []
+				},
+				dagensaktivitet: 'Idag kommer rond gruppen att arbeta. APT i eftermiddag.',
+				antalopimorgon: '3',
+				osorterade: [{namn: 'Thorsten Winther', titel: 'USK', passtyp: 'A'}, {namn: 'Eilert Abrahamsson', titel: 'USK', passtyp: 'C'}, {namn: 'Noak Nyström', titel: 'SSK', passtyp: 'A'}, {namn: 'Egil Mattsson', titel: 'SSK', passtyp: 'C'}, {namn: 'Claes Albrecktsson', titel: 'SSK', passtyp: 'N'}, {namn: 'Elis Karlsson', titel: 'USK', passtyp: 'N'}, {namn: 'Robin Hallman', titel: 'USK', passtyp: 'A'}]
+			};*/
+			var demokod = {
+				formiddag: {
+					rond: [{titel: 'SSK',namn: randomname(),telefon: '43123'},{titel: 'USK',namn: randomname(),telefon: '43124'}],
+					lakemedel:[{titel: 'SSK',namn: randomname(),telefon: '43125'},{titel: 'SSK',namn: randomname(),telefon: '43126'}],
+					overlakare: [{titel: 'LÄK',namn: randomname(),telefon: '43385'}],
+					avdelningslakare: [{titel: 'LÄK',namn: randomname(),telefon: '43936'}],
+					samordnare: [{titel: 'USK',namn: randomname(),telefon: '54232'}],
+					resurs: [{titel: 'USK',namn: randomname(),telefon: ''}],
+					vardinna: [{titel: 'USK',namn: randomname(),telefon: ''}],
+					utb: [{titel: 'USK',namn: randomname(),telefon: ''}]
+				},
+				eftermiddag: {
+					rond: [{titel: 'SSK',namn: randomname(),telefon: '43123'},{titel: 'USK',namn: randomname(),telefon: '43124'}],
+					lakemedel:[{titel: 'SSK',namn: randomname(),telefon: '43125'}],
+					overlakare: [],
+					avdelningslakare: [],
+					resurs: [{titel: 'USK',namn: randomname(),telefon: ''}],
+					vardinna: [],
+					utb: []
+				},
+				natt: {
+					rond: [{titel: 'SSK',namn: randomname(),telefon: '43123'},{titel: 'USK',namn: randomname(),telefon: '43124'}],
+					lakemedel:[{titel: 'SSK',namn: randomname(),telefon: '43125'}],
+					overlakare: [],
+					avdelningslakare: [],
+					resurs: [],
+					vardinna: []
+				},
+				dagensaktivitet: 'Idag kommer rond gruppen att arbeta. APT i eftermiddag.',
+				antalopimorgon: '3',
+				osorterade: [{namn: randomname(), titel: 'USK', passtyp: 'A'}, {namn: randomname(), titel: 'USK', passtyp: 'C'}, {namn: randomname(), titel: 'SSK', passtyp: 'A'}, {namn: randomname(), titel: 'SSK', passtyp: 'C'}, {namn: randomname(), titel: 'SSK', passtyp: 'N'}, {namn: randomname(), titel: 'USK', passtyp: 'N'}, {namn: randomname(), titel: 'USK', passtyp: 'A'}]
+			};
+			addinfo(demokod);
+			somethingchanged();
+		};
+	</script>
+	<style type="text/css">
+		* {
+			margin: 0px;
+			padding: 0px;
+		}
+		h1 {
+			text-decoration: underline;
+			margin: 5px 0px;
+		}
+		#date {
+			text-align: center;
+			background-color: black;
+			color: white;
+			zoom: 1.5;
+		}
+		#date input {
+			
+			margin: 0px 5px;
+		}
+		input, select, textarea {
+			zoom: 1.2;
+		}
+		textarea {
+			width: 100%;
+		}
+		#wrapper input[type=button] {
+			margin-left: 5px;
+			padding: 0px 5px;
+		}
+		thead{
+			font-weight: bold;
+			text-align: center;
+			font-size: 20px;
+		}
+		table{
+			min-width: 100%;
+			border-collapse: collapse;
+		}
+		td{
+			padding: 5px;
+			vertical-align: text-top;
+			border: 2px solid #000;
+			white-space: nowrap;
+		}
+		#osorterade{
+			margin-top: 30px;
+			text-align: center;
+		}
+		.osorterade {
+			display: inline-block;
+			margin: 10px;
+			padding: 5px;
+			border: 2px solid black;
+			cursor: move;
+		}
+	</style>
+</head>
+<body onload="load()">
+	<div id="date"><input type="button" class="arrowbutton" onclick="nextdate(this)" data-numberdate="-1" value="<--"><input type="date" id="dateinput" onchange="askfordate();"><input type="button" onclick="nextdate(this)" data-numberdate="1" value="-->" class="arrowbutton"></div>
+	<div id="wrapper"></div>
+	<div id="osorterade"></div>
+	<input type="button" value="Demo" onclick="demo();">
+	<script src="/socket.io/socket.io.js"></script>
+	<script type="text/javascript">
+		//Tar server id enbart för att koppla till socket
+		var geturl = window.location.href.replace('http://', '').split('/')[0];
+		
+		//Lyssnar om server säger något
+		var socket = io.connect(geturl);
+
+		// Visar i console log status från server
+		socket.on('message', function(message) {
+			console.log(message);
+		});
+
+		// Om server skickar ifall användaren vill ha data
+		socket.on('villduhadata', function(message) {
+			askfordate();
+		});
+
+		// Svara server att du vill ha all data för specifikt datum
+		function askfordate(){
+			var dateinput = document.getElementById('dateinput').value;
+			var param = {datum: dateinput, tid: 'allt', return: 'harfardudata'};
+			socket.emit('getdatafromdate', param);
+		};
+
+		// När server skickar data
+		socket.on('harfardudata', function(message) {
+			console.log(message);
+			addinfo(message);
+			//load(message);
+		});
+		socket.on('ardatumaktuell', function(message) {
+			var dateinput = document.getElementById('dateinput').value;
+			if(message == dateinput){
+				var param = {datum: dateinput, tid: 'allt', return: 'harfardudata'};
+				socket.emit('getdatafromdate', param);
+			};
+		});
+	</script>
+</body>
+</html>
