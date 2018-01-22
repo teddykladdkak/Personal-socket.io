@@ -43,7 +43,7 @@
 			var head = document.getElementsByTagName('head')[0];
 				var script = document.createElement('script');
 					script.setAttribute('type', 'text/javascript');
-					script.setAttribute('src', 'http://api.dryg.net/dagar/v2.1/' + message.datum.replace('-', '/').replace('-', '/') + '?callback=addnamnsdag');
+					script.setAttribute('src', 'https://api.dryg.net/dagar/v2.1/' + message.datum.replace('-', '/').replace('-', '/') + '?callback=addnamnsdag');
 				head.appendChild(script);
 
 			// Lägger till namn och rubriker m.m. på sidan
@@ -114,7 +114,7 @@
 	<script src="/socket.io/socket.io.js"></script>
 	<script type="text/javascript">
 		//Tar server id enbart för att koppla till socket
-		var geturl = window.location.href.replace('http://', '').split('/')[0];
+		var geturl = window.location.href.replace('http://', '').replace('https://', '').split('/')[0];
 		
 		//Lyssnar om server säger något
 		var socket = io.connect(geturl);
