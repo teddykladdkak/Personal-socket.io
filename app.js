@@ -14,7 +14,6 @@ var auth = require('basic-auth');
 //Startar server och tillåtna filer
 var server = http.createServer(function (request, response) {
 	var filePath = '.' + request.url;
-	console.log(filePath);
 	if (filePath == './') {
 		filePath = config.location.index;
 	};
