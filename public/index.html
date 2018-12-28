@@ -79,7 +79,7 @@
 						row.setAttribute('class', 'row');
 						var leftcol = document.createElement('div');
 							leftcol.setAttribute('class', 'left previewimg');
-							leftcol.setAttribute('style', 'background-image: url(\'filer/preview/' + versioner[i].img + '\');background-position: center;');
+							leftcol.setAttribute('style', 'background-image: url(\'bilder/' + versioner[i].img + '\');background-position: center;');
 						row.appendChild(leftcol);
 						var rightcol = document.createElement('div');
 							rightcol.setAttribute('class', 'right descript');
@@ -89,7 +89,7 @@
 								head.appendChild(headtext);
 							rightcol.appendChild(head);
 							var previewimg = document.createElement('img');
-								previewimg.setAttribute('src', 'filer/preview/' + versioner[i].img);
+								previewimg.setAttribute('src', 'bilder/' + versioner[i].img);
 								previewimg.setAttribute('class', 'previewbild');
 							rightcol.appendChild(previewimg);
 							var info = document.createElement('p');
