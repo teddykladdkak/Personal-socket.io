@@ -1,7 +1,7 @@
 {
   "name": "personallista",
   "version": "1.0.0",
-  "description": "Projekt med syfte att utarbeta vyer m.m. för hur vårdpersonalen själva vill lägga sina scheman. https://personallista.teddyprojekt.se/",
+  "description": "Projekt med syfte att utarbeta vyer m.m. för hur vårdpersonalen själva vill lägga sina scheman. http://personallista.tk/",
   "main": "app.js",
   "dependencies": {
     "basic-auth": "^1.1.0",
